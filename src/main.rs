@@ -4,7 +4,6 @@ use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
 use tokio::time::{self, Duration, Instant};
 
-// Struct to hold statistics
 #[derive(Debug)]
 struct Stats {
     total_requests: usize,
@@ -32,32 +31,23 @@ impl Stats {
     }
 }
 
-// Function to make N async requests to a UDP server
 async fn make_udp_requests(
     server_address: SocketAddr,
     message: &[u8],
     num_requests: usize,
     stats: Arc<Mutex<Stats>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let socket = UdpSocket::bind("0.0.0.0:0").await?; // Bind to any available local address
+    let socket = UdpSocket::bind("0.0.0.0:0").await?;
     let mut interval = time::interval(Duration::from_secs(1));
     let start_time = Instant::now();
     let mut last_tick_time = start_time;
     let mut stats_lock = stats.lock().await;
 
     for _ in 0..num_requests {
-        // Send the message to the server
         stats_lock.increment_total();
         socket.send_to(message, &server_address).await?;
-
-        // Optional: Receive response from the server
-        // let mut buf = vec![0; 1024];
-        // let (_, _) = socket.recv_from(&mut buf).await?;
         stats_lock.increment_successful();
-        // Optional: Print received response
-        // println!("Received: {}", String::from_utf8_lossy(&buf));
 
-        // Check if 1 second has elapsed
         if Instant::now() - last_tick_time >= Duration::from_secs(1) {
             let elapsed_time = start_time.elapsed();
             println!(
@@ -74,16 +64,12 @@ async fn make_udp_requests(
 
 #[tokio::main]
 async fn main() {
-    let server_address: SocketAddr = "0.0.0.0:41234".parse().unwrap(); // Change this to your server's address
-    let message = b"Hello UDP Server"; // Message to send
-    let num_requests = 10000000; // Number of requests to send
-
-    // Number of concurrent instances
+    let server_address: SocketAddr = "ip:41234".parse().unwrap();
+    let message = b"Hell
+        o UDP Server";
+    let num_requests = 10000;
     let num_instances = 10;
-
-    // Statistics
     let stats = Arc::new(Mutex::new(Stats::new()));
-
     let mut handles = vec![];
 
     for _ in 0..num_instances {
@@ -99,7 +85,7 @@ async fn main() {
         handles.push(handle);
     }
 
-    // Wait for all tasks to finish
+    //
     for handle in handles {
         let _ = handle.await;
     }
