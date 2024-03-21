@@ -2,6 +2,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
 use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
+use std::io::{stdin,stdout,Write};
 use tokio::time::{self, Duration, Instant};
 use tokio::runtime::Builder;
 use num_cpus; 
@@ -29,7 +30,7 @@ impl Stats {
     }
 
     fn success_rate(&self, duration: Duration) -> f64 {
-        self.successful_requests as f64 / duration.as_secs_f64()
+        self.successful_requests as f64 
     }
 }
 
@@ -64,7 +65,7 @@ async fn make_udp_requests(
             let elapsed_time = start_time.elapsed();
             let mut stats_lock = stats.lock().await;
             println!(
-                "Success rate: {:.2} reqs/s",
+                "Success rate: {:} reqs",
                 stats_lock.success_rate(elapsed_time)
             );
             println!("Total requests: {}", counter.load(Ordering::SeqCst));
@@ -75,9 +76,50 @@ async fn make_udp_requests(
     Ok(())
 }
 
+fn validate_user_input(ip: &str) -> bool {
+    let octets: Vec<&str> = ip.split(".").collect();
+
+    if octets.len() != 4 {
+        return false;
+    }
+
+    for octet in octets {
+        match octet.parse::<u8>() {
+            Ok(num) => {
+                if num > 255 {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+    }
+
+    true
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let server_address: SocketAddr = "185.41.143.36:9158".parse()?;
+
+    let mut s=String::new();
+
+    print!("Enter the ip addr and port in this format: IP:PORT: ");
+
+    let _=stdout().flush();
+
+    stdin().read_line(&mut s).expect("Did not enter a correct ip address, if the error persists contact the developer or make a pull request :)");
+
+    if let Some('\n')=s.chars().next_back() {
+        s.pop();
+    }
+    if let Some('\r')=s.chars().next_back() {
+        s.pop();
+    }
+
+    if !validate_user_input(s) {
+        Ok(())
+    }
+
+    let server_address: SocketAddr = s.parse()?;
     let message = vec![0; 1024]; 
     let num_requests_per_instance = 62500000; 
     let num_instances = num_cpus::get(); 
@@ -85,6 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let counter = Arc::new(AtomicUsize::new(0));
 
     let mut handles = vec![];
+
 
     for _ in 0..num_instances {
         let server_address = server_address.clone();
